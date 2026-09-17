@@ -1,20 +1,54 @@
-name: Schema foundation
+name: Application checks
 on:
   push:
   pull_request:
 permissions:
   contents: read
 jobs:
-  schema:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: career
+          POSTGRES_PASSWORD: career_ci
+          POSTGRES_DB: career_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U career -d career_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://career:career_local@localhost:5432/career
+      DATABASE_URL: postgresql://career:career_ci@127.0.0.1:5432/career_test
+      TEST_DATABASE_URL: postgresql://career:career_ci@127.0.0.1:5432/career_test
+      APP_URL: http://127.0.0.1:3100
+      # Disposable CI secret; never use for deployment.
+      AUTH_SECRET: ci-only-ephemeral-auth-secret-not-for-deployment-123456789
+      ALLOW_REGISTRATION: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: npm
       - run: npm ci
       - run: npm run db:validate
       - run: npm run db:generate
+      - run: npm run db:deploy
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run build
+      - name: HTTP authentication and application smoke
+        run: |
+          npm start > /tmp/career-next.log 2>&1 &
+          career_server_pid=$!
+          trap 'kill "$career_server_pid" 2>/dev/null || true' EXIT
+          node scripts/wait-server.mjs
+          npm run test:http
+      - run: npm audit --audit-level=high
