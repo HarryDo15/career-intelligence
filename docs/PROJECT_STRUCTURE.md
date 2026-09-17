@@ -1,78 +1,55 @@
 # Project structure
 
-## Created in this foundation
-
 ```text
 career-intelligence/
-├── .github/workflows/schema.yml
-├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── PROJECT_STRUCTURE.md
-│   ├── ROADMAP.md
-│   └── SETUP.md
-├── prisma/schema.prisma
-├── .env.example
-├── .gitignore
-├── compose.yaml
-├── package.json
-├── package-lock.json
-├── prisma.config.ts
-└── README.md
-```
-
-## Target application layout (to implement)
-
-```text
-src/
-├── app/
-│   ├── (auth)/sign-in/page.tsx
-│   ├── (workspace)/
-│   │   ├── layout.tsx
-│   │   ├── dashboard/page.tsx
+├── .github/workflows/schema.yml   # full app CI including PostgreSQL + HTTP checks
+├── docs/                         # architecture, implementation, roadmap, setup
+├── prisma/
+│   ├── schema.prisma
+│   ├── migrations/202609170001_initial/migration.sql
+│   ├── seed.ts                   # opt-in seed entry point
+│   └── seed-data.ts              # idempotent synthetic fixtures
+├── public/og.png
+├── scripts/
+│   ├── setup-env.ts
+│   ├── local-db.ts
+│   ├── wait-server.mjs
+│   └── http-smoke.ts
+├── src/
+│   ├── app/
+│   │   ├── api/auth/[...all]/route.ts
+│   │   ├── api/applications/route.ts
+│   │   ├── api/health/route.ts
 │   │   ├── applications/page.tsx
-│   │   ├── applications/[id]/page.tsx
-│   │   ├── discovered/page.tsx
-│   │   ├── networking/page.tsx
-│   │   ├── review/page.tsx
-│   │   └── settings/page.tsx
-│   ├── api/auth/[...auth]/route.ts
-│   ├── api/integrations/outlook/connect/route.ts
-│   ├── api/integrations/outlook/callback/route.ts
-│   ├── api/inngest/route.ts
-│   ├── api/health/route.ts
-│   ├── layout.tsx
-│   ├── error.tsx
-│   └── globals.css
-├── components/
-│   ├── ui/                         # shadcn components
-│   └── shell/                      # navigation, page headers
-├── features/
-│   ├── applications/               # actions, validation, DTOs
-│   │   └── components/             # kanban-board, job-card, table, form
-│   ├── analytics/components/       # KPI cards, trend, funnel, breakdown
-│   ├── discovery/components/       # profiles, job list, filters
-│   ├── outlook/components/         # connection state, review queue
-│   └── networking/components/      # contacts, draft editor
-├── server/
-│   ├── auth/                       # sessions, requireUser, identity
-│   ├── db/                         # Prisma singleton + PG adapter
-│   ├── services/                   # domain rules and transactions
-│   ├── repositories/               # mandatory user-scoped persistence
-│   ├── integrations/
-│   │   ├── microsoft/              # MSAL cache, Graph client, delta
-│   │   └── jobs/                   # provider interface, mock adapter
-│   ├── workflows/                  # Inngest client + registered functions
-│   └── security/                   # encryption, OAuth state, log redaction
-├── lib/                            # shared pure formatting and types
-└── generated/prisma/               # ignored; prisma generate output
-prisma/
-├── schema.prisma
-├── migrations/                     # generated and reviewed in week 1
-└── seed.ts                         # synthetic demo fixtures
-tests/
-├── unit/                           # metrics, parser, transition rules
-├── integration/                    # PostgreSQL ownership + idempotency
-└── e2e/                            # Playwright end-to-end journeys
+│   │   ├── dashboard/page.tsx
+│   │   ├── demo/page.tsx
+│   │   ├── settings/page.tsx
+│   │   ├── sign-in/page.tsx
+│   │   ├── page.tsx              # entry to demo
+│   │   ├── layout.tsx
+│   │   ├── error.tsx
+│   │   ├── loading.tsx
+│   │   └── globals.css
+│   ├── components/
+│   │   ├── ui/                  # Button, Dialog (Radix / shadcn conventions)
+│   │   └── workspace/           # shell, overview, chart, tracker, editor, auth forms
+│   ├── features/applications/   # validation + Server Actions
+│   ├── server/                  # auth, DB singleton, application service, safe errors
+│   ├── lib/                     # shared types, demo data, browser auth client, cn
+│   └── generated/prisma/        # ignored generated client
+├── tests/
+│   ├── validation.test.ts
+│   └── integration/applications.test.ts
+├── .env.example
+├── compose.yaml
+├── components.json
+├── next.config.ts
+├── prisma.config.ts
+└── package.json
 ```
 
-Pages compose features. Client components import DTOs and actions, never repositories or provider clients. Services own transactions and validation rules; workflow functions coordinate those same services. Keep a single app until independent scale or deployment needs justify separation.
+## Planned additions
+
+Week 2 adds Kanban, richer cohort analytics, search profiles, a job-provider interface, and Inngest workflow registration. Week 3 adds MSAL/Graph under `server/integrations/microsoft`, email signal matching and review, contact management, and draft generation. Week 4 adds browser E2E and deployment evidence.
+
+Server Components load user-scoped services and pass explicit DTOs to client components. Actions and the JSON API share one validation/service layer. Database secrets and authentication stay in modules marked `server-only`; the injectable domain service is imported only by server entry points and tests.

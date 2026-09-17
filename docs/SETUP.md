@@ -1,59 +1,81 @@
 # Setup and environment
 
-## What runs today
+## Supported local paths
 
-This foundation supports schema validation, client generation, and local database migrations. Frontend and workers are scheduled in the roadmap and are not executable yet.
+Node.js 22.12+ and npm are required. Use the lockfile (`npm ci`).
+
+### Embedded PostgreSQL (no Docker)
 
 ```sh
 npm ci
-cp .env.example .env
-docker compose up -d --wait
-npm run db:validate
-npm run db:generate
-npm run db:migrate -- --name init
+npm run setup:env
+npm run db:local
 ```
 
-Use Node 22 LTS ≥22.12 and Docker Compose. The local database is bound to loopback with development-only credentials. `docker compose stop` preserves its volume. Review and commit migration SQL; add the documented CHECK constraints before implementing writes. CI currently validates/generates the schema; week 1 adds real PostgreSQL migration and integration checks. Client construction in the app will require `@prisma/client`, `@prisma/adapter-pg`, and `pg` pinned to compatible versions.
+`setup:env` creates `.env` only when absent and generates a random auth secret. `db:local` starts PostgreSQL on `127.0.0.1:54329`, creates `career` and `career_test`, and persists data under ignored `.local/postgres`. Leave it running; Ctrl+C stops it without deleting data. Credentials are development-only. The npm wrapper is currently beta and is a local convenience, not the production database.
 
-## Variables
+Some package managers block native package install scripts. The platform-specific `@embedded-postgres/*` postinstall script must be permitted to restore native library symlinks; review it before allowing it. Docker is an alternative.
 
-| Variable | Purpose / setup |
-| --- | --- |
-| DATABASE_URL | Prisma database URL; local example supplied. Production uses managed PostgreSQL with TLS. |
-| APP_URL | App origin for trusted redirects and origin checks. |
-| AUTH_SECRET | Generate a random secret (`openssl rand -base64 32`) for the chosen auth implementation. |
-| MICROSOFT_CLIENT_ID | Entra application client ID. |
-| MICROSOFT_CLIENT_SECRET | Server-side Entra client secret; store in secret manager and rotate. |
-| MICROSOFT_TENANT_ID | `common` for supported personal/work accounts or a tenant ID for a restricted app. |
-| MICROSOFT_REDIRECT_URI | Exact registered Web callback URI, localhost example supplied. |
-| TOKEN_ENCRYPTION_KEY | Base64 32 random bytes; separate from AUTH_SECRET. Add key versioning and rotation before production. |
-| INNGEST_EVENT_KEY | Inngest environment event credential; server-only. |
-| INNGEST_SIGNING_KEY | Validates Inngest requests in deployed environments; server-only. |
-| JOB_DISCOVERY_PROVIDER | `mock` initially; real adapters require explicit provider configuration. |
+In another terminal:
 
-Only DATABASE_URL is consumed by the current toolchain. All other variables reserve the configuration contract for future features. Never prefix credentials with NEXT_PUBLIC_. `.env` files are ignored; `.env.example` contains no real credentials.
+```sh
+npm run db:deploy
+npm run db:generate
+npm run dev
+```
 
-## Outlook preparation (week 3)
+Use `http://127.0.0.1:3100`, not another hostname. `/demo` contains synthetic examples; `/sign-in` provides sign-up when enabled. Set `ALLOW_REGISTRATION=false` and restart after creating your private account if no more accounts are needed.
 
-1. Register an application in Microsoft Entra, selecting supported account types deliberately.
-2. Add a **Web** redirect URI matching MICROSOFT_REDIRECT_URI, plus the production callback when deployed.
-3. Configure delegated Graph Mail.Read and OIDC/offline scopes; consent availability depends on organizational policy.
-4. Create a server-side client credential and populate local secrets.
-5. Implement MSAL authorization-code + PKCE and session-bound state before enabling Connect. Account linking requires an already authenticated app session.
-6. Verify consent denial, expired refresh access, encrypted cache persistence, and disconnect. Do not test with a public demo account containing personal mail.
+### Docker PostgreSQL
 
-## Application commands to add in milestones 1–2
+```sh
+npm ci
+npm run setup:env
+docker compose up -d --wait
+```
 
-`npm run dev`, `npm run build`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:e2e`, and `npm run db:seed` are planned, not available today. Add the Inngest local dev server against `/api/inngest` after that route exists; keep production signature verification enabled.
+Change DATABASE_URL in `.env` to `postgresql://career:career_local@127.0.0.1:5432/career?schema=public`, then run migration, generation, and the app as above. Create a separate `career_test` database before integration tests. The Docker volume persists across stops; do not remove it to solve migration errors.
 
-## Publishing and deployment
+## Commands
 
-GitHub holds the source; publishing this repository does not host the application. Initial repository visibility is private so source can be reviewed before public portfolio release. No real secrets, resume context, contacts, or messages should enter Git history.
+| Command                                    | Purpose                                               |
+| ------------------------------------------ | ----------------------------------------------------- |
+| npm run dev                                | Development app at 127.0.0.1:3100                     |
+| npm run build / npm start                  | Production build / local production server            |
+| npm run setup:env                          | Create missing .env with a random secret              |
+| npm run db:local                           | Optional local PostgreSQL runner                      |
+| npm run db:deploy                          | Apply committed migrations                            |
+| npm run db:migrate -- --name NAME          | Author a new migration in development                 |
+| npm run db:generate / db:validate          | Generate client / validate schema                     |
+| SEED_EMAIL=you@example.com npm run db:seed | Add synthetic records to an existing account          |
+| npm run lint / typecheck / format:check    | Static checks / formatting                            |
+| npm test                                   | Validation unit tests                                 |
+| npm run test:integration                   | Requires TEST_DATABASE_URL ending in _test            |
+| npm run test:http                          | Requires running localhost app + registration enabled |
 
-Target deployment: managed Next.js hosting, managed PostgreSQL, and an Inngest environment. Configure secrets on the hosting platform, apply reviewed migrations using `npm run db:deploy` from CI with a migration-capable connection, deploy the application, register the Inngest endpoint, and run authenticated smoke tests. Use a separate synthetic-data demo environment. Production hosting is a week-4 deliverable, not part of this foundation.
+The seed and HTTP checks do not print credentials. The HTTP check deletes only its own test users and cascading records.
 
-## Foundation validation record
+## Environment
 
-Validated on September 15, 2026 with Prisma 7.10.0: `db:validate` and `db:generate` passed. No database migration was executed and no application runtime exists yet.
+| Variable                                                       | Used now? | Purpose                                                                        |
+| -------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------ |
+| DATABASE_URL                                                   | Yes       | PostgreSQL connection; production requires TLS and least-privilege credentials |
+| TEST_DATABASE_URL                                              | Tests     | Dedicated database with a name ending in _test                                 |
+| APP_URL                                                        | Yes       | Exact trusted app origin; localhost example is http://127.0.0.1:3100           |
+| AUTH_SECRET                                                    | Yes       | Random 32+ character secret, generated by setup script                         |
+| ALLOW_REGISTRATION                                             | Yes       | Explicit `true` allows new accounts; default is disabled                       |
+| SEED_EMAIL                                                     | Seed only | Existing account to receive synthetic examples                                 |
+| MICROSOFT_CLIENT_ID / CLIENT_SECRET / TENANT_ID / REDIRECT_URI | No        | Reserved for Week 3 Outlook integration                                        |
+| TOKEN_ENCRYPTION_KEY                                           | No        | Reserved for encrypted Outlook token cache                                     |
+| INNGEST_EVENT_KEY / SIGNING_KEY                                | No        | Reserved for Week 2 workflows                                                  |
+| JOB_DISCOVERY_PROVIDER                                         | No        | Reserved; `mock` is the initial provider                                       |
 
-`npm audit` reports four high-severity dependency entries in the development toolchain, originating from deepmerge-ts and mysql2 and propagated through Prisma/config. The tool recommends a major Prisma downgrade; this foundation does not apply that automatically. Re-evaluate patched compatible versions before release and rerun schema/generation/migration checks. Track this as a release blocker. These packages are currently devDependencies, but that does not remove build-system exposure.
+No secrets belong in NEXT_PUBLIC_ variables, source control, or logs. Better Auth sessions follow its standard database storage format (see implementation notes); Outlook tokens are not stored or used yet.
+
+## CI and deployment
+
+GitHub Actions provisions PostgreSQL 17, applies migrations, validates/generates Prisma, checks types/lint/format, runs unit and integration tests, builds the app, runs localhost HTTP smoke checks, and audits dependencies. CI uses disposable credentials.
+
+Production hosting is not provisioned in this milestone. Target a Node-compatible Next.js host with managed PostgreSQL, pooled runtime connections, and a separate migration-capable connection if your provider requires one. Apply reviewed migrations with `npm run db:deploy`, configure HTTPS APP_URL and secrets, and run smoke tests before exposure. Build output is standard Next.js, not a Cloudflare Worker artifact for Sites.
+
+Before public release: implement verified email and password recovery, configure trusted proxy IP handling/network limits, verify backups/restores, add account export/deletion, and perform browser interaction/accessibility QA. The public portfolio demo must use synthetic data only.

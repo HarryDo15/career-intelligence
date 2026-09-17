@@ -1,5 +1,7 @@
 # Architecture
 
+> This document describes the target design. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for the delivered Week 1 behavior and explicit differences, including Better Auth storage and initial analytics.
+
 ## Decision: a modular Next.js monolith
 
 Use one TypeScript repository and one PostgreSQL database. React Server Components query user-scoped services on the server; interactive Kanban and Recharts components receive serializable view models. Server Actions authenticate, validate with Zod, authorize ownership, and call domain services. Route Handlers expose OAuth callbacks, health checks, and the signed Inngest endpoint. All database, secrets, and integration modules are server-only.
@@ -22,14 +24,14 @@ flowchart TD
 
 ## Modules and interfaces
 
-| Module | Responsibility | Boundary |
-| --- | --- | --- |
-| Applications | CRUD, stage transitions, table filters, pagination | `createApplication`, `moveApplication(id, expectedVersion, stage)`, `archiveApplication` |
-| Analytics | Cohort metrics, daily buckets, stage history | `getDashboard(userId, dateRange, timezone)` |
-| Discovery | Search profiles, scoring, deduplication, save-to-tracker | `JobProvider.search(profile, cursor)` |
-| Outlook | Connect/disconnect, token cache, folder delta sync | `connect`, `syncFolder`, `disconnect` |
-| Email signals | Match message to application, classify, review | `classify`, `acceptSignal`, `dismissSignal` |
-| Networking | Provenance-backed contact records, editable drafts | `generateDraft(application, contact, resumeContext)` |
+| Module        | Responsibility                                           | Boundary                                                                                 |
+| ------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Applications  | CRUD, stage transitions, table filters, pagination       | `createApplication`, `moveApplication(id, expectedVersion, stage)`, `archiveApplication` |
+| Analytics     | Cohort metrics, daily buckets, stage history             | `getDashboard(userId, dateRange, timezone)`                                              |
+| Discovery     | Search profiles, scoring, deduplication, save-to-tracker | `JobProvider.search(profile, cursor)`                                                    |
+| Outlook       | Connect/disconnect, token cache, folder delta sync       | `connect`, `syncFolder`, `disconnect`                                                    |
+| Email signals | Match message to application, classify, review           | `classify`, `acceptSignal`, `dismissSignal`                                              |
+| Networking    | Provenance-backed contact records, editable drafts       | `generateDraft(application, contact, resumeContext)`                                     |
 
 ## Data model and invariants
 
@@ -64,16 +66,16 @@ Parse message content transiently. Store classification reason codes, immutable 
 
 All headline conversion metrics use the same submitted cohort: applications with `appliedAt` in the selected range. Interpret date boundaries in the user's timezone, then query UTC timestamps; use a half-open interval [start, end). Empty denominators display 0% with sample size 0; missing response-time data displays “—”.
 
-| Metric | Definition |
-| --- | --- |
-| Total applied | Number of applications in the submitted cohort |
-| Interview conversion | Cohort applications ever reaching Screening, Technical, or Offer ÷ cohort size |
-| Response rate | Cohort applications with a substantive `firstResponseAt` ÷ cohort size |
-| Active pipelines | Current nonarchived Applied/Screening/Technical applications, across all dates; label this separately |
-| Average response time | Mean elapsed hours from appliedAt to firstResponseAt among responded cohort applications |
-| Applications over time | Count by appliedAt, grouped by local week/month, including zero buckets |
-| Status breakdown | Cohort current stages; Screening/Technical displayed as Interviewing |
-| Funnel | Cohort ever reaching Applied → Interviewing → Offer; later-stage evidence implies preceding funnel milestones |
+| Metric                 | Definition                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Total applied          | Number of applications in the submitted cohort                                                                |
+| Interview conversion   | Cohort applications ever reaching Screening, Technical, or Offer ÷ cohort size                                |
+| Response rate          | Cohort applications with a substantive `firstResponseAt` ÷ cohort size                                        |
+| Active pipelines       | Current nonarchived Applied/Screening/Technical applications, across all dates; label this separately         |
+| Average response time  | Mean elapsed hours from appliedAt to firstResponseAt among responded cohort applications                      |
+| Applications over time | Count by appliedAt, grouped by local week/month, including zero buckets                                       |
+| Status breakdown       | Cohort current stages; Screening/Technical displayed as Interviewing                                          |
+| Funnel                 | Cohort ever reaching Applied → Interviewing → Offer; later-stage evidence implies preceding funnel milestones |
 
 Offer implies a response; manual transitions ask for the effective response date. Rejected after interviewing still counts toward interview conversion. Archived applications stay in historical metrics; hard deletion removes them. Add a tracked Wishlist count outside the submission cohort. Use indexed SQL aggregation on demand first; materialized views are unnecessary at personal scale.
 
