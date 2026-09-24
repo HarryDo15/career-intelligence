@@ -4,6 +4,8 @@ import {
   mutationMeta,
   listInput,
 } from "@/features/applications/validation";
+import { z } from "zod";
+import { stages } from "@/lib/application";
 import type { ApplicationRow } from "@/lib/application";
 export class DomainError extends Error {
   constructor(
@@ -67,6 +69,124 @@ export function applicationService(db: PrismaClient) {
         }),
       ]);
       return { total, page, pageSize: 20, rows: rows.map(toRow) };
+    },
+    async board(userId: string, query = "") {
+      const text = z.string().trim().max(160).parse(query);
+      const where = {
+        userId,
+        archivedAt: null,
+        ...(text
+          ? {
+              OR: [
+                { company: { contains: text, mode: "insensitive" as const } },
+                { title: { contains: text, mode: "insensitive" as const } },
+              ],
+            }
+          : {}),
+      };
+      return db.$transaction(
+        async (tx) => {
+          const columns = [];
+          for (const stage of stages) {
+            const [total, rows] = await Promise.all([
+              tx.application.count({ where: { ...where, stage } }),
+              tx.application.findMany({
+                where: { ...where, stage },
+                select: selection,
+                orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+                take: 40,
+              }),
+            ]);
+            columns.push({ stage, total, rows: rows.map(toRow) });
+          }
+          return columns;
+        },
+        { isolationLevel: "RepeatableRead" },
+      );
+    },
+    async move(userId: string, meta: unknown, input: unknown) {
+      const { id, version } = mutationMeta.parse(meta);
+      const move = z
+        .object({
+          stage: z.enum(stages),
+          appliedAt: z.string().optional(),
+          firstResponseAt: z.string().optional(),
+        })
+        .parse(input);
+      return db.$transaction(async (tx) => {
+        const before = await tx.application.findFirst({
+          where: { id, userId },
+          select: selection,
+        });
+        if (!before)
+          throw new DomainError("NOT_FOUND", "Application not found.");
+        if (before.version !== version || before.archivedAt)
+          throw new DomainError(
+            "CONFLICT",
+            "This card changed or was archived. Refresh the board and try again.",
+          );
+        if (move.stage === before.stage) return toRow(before);
+        const parsed = applicationInput.parse({
+          ...before,
+          location: before.location ?? "",
+          url: before.url ?? "",
+          notes: before.notes ?? "",
+          stage: move.stage,
+          appliedAt:
+            move.appliedAt ??
+            before.appliedAt?.toISOString().slice(0, 10) ??
+            "",
+          firstResponseAt:
+            move.firstResponseAt ??
+            before.firstResponseAt?.toISOString().slice(0, 10) ??
+            "",
+        });
+        const changed = await tx.application.updateMany({
+          where: { id, userId, version, archivedAt: null },
+          data: {
+            stage: move.stage,
+            appliedAt:
+              move.appliedAt === undefined
+                ? before.appliedAt
+                : parsed.appliedAt,
+            firstResponseAt:
+              move.firstResponseAt === undefined
+                ? before.firstResponseAt
+                : parsed.firstResponseAt,
+            version: { increment: 1 },
+          },
+        });
+        if (!changed.count)
+          throw new DomainError(
+            "CONFLICT",
+            "This card changed in another tab. Refresh and try again.",
+          );
+        await tx.stageEvent.create({
+          data: {
+            applicationId: id,
+            fromStage: before.stage,
+            toStage: move.stage,
+            source: "MANUAL",
+            occurredAt: new Date(),
+            idempotencyKey: `move:${id}:${version + 1}`,
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId,
+            action: "application.moved",
+            entityType: "Application",
+            entityId: id,
+            metadata: { from: before.stage, to: move.stage },
+          },
+        });
+        return toRow(
+          await tx.application.findUniqueOrThrow({
+            where: { id },
+            select: selection,
+          }),
+        );
+      });
     },
     async overview(userId: string) {
       // Server-only data for the initial personal-scale overview. No cross-user cache.

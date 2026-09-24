@@ -148,6 +148,88 @@ try {
   assert.equal(dashboard.status, 200);
   const html = await dashboard.text();
   assert.ok(html.includes("HTTP fixture"));
+  for (const path of [
+    "/applications?layout=board",
+    "/discovered",
+    "/dashboard?start=2026-01-01&end=2026-01-31&group=month&timezone=UTC",
+  ]) {
+    const page = await fetch(origin + path, {
+      headers: { Cookie: one.cookie },
+    });
+    assert.equal(page.status, 200, path);
+  }
+  const move = await mutate(one.cookie, {
+    operation: "move",
+    meta: { id: app.id, version: 3 },
+    input: { stage: "TECHNICAL" },
+  });
+  assert.equal(move.status, 200);
+  const discoveryPost = async (cookie: string, body: unknown) =>
+    fetch(origin + "/api/discovery", {
+      method: "POST",
+      headers: { ...headers, Cookie: cookie },
+      body: JSON.stringify(body),
+    });
+  assert.equal((await fetch(origin + "/api/discovery")).status, 401);
+  const profileResponse = await discoveryPost(one.cookie, {
+    operation: "profile.save",
+    input: {
+      name: "HTTP discovery",
+      titles: ["engineer"],
+      keywords: ["react"],
+      excludedKeywords: ["intern"],
+      locations: ["Singapore"],
+      workModes: ["REMOTE"],
+      enabled: true,
+    },
+  });
+  assert.equal(
+    profileResponse.status,
+    200,
+    await profileResponse.clone().text(),
+  );
+  const profile = (await profileResponse.json()).result;
+  const runDiscovery = await discoveryPost(one.cookie, {
+    operation: "run",
+    input: { id: profile.id, version: 0 },
+  });
+  assert.equal(runDiscovery.status, 200);
+  assert.equal((await runDiscovery.json()).result.count, 1);
+  const matches = await fetch(origin + "/api/discovery", {
+    headers: { Cookie: one.cookie },
+  });
+  const matched = (await matches.json()).jobs.rows;
+  assert.equal(matched.length, 1);
+  assert.equal(
+    (
+      await discoveryPost(two.cookie, {
+        operation: "save",
+        input: matched[0].id,
+      })
+    ).status,
+    404,
+  );
+  const firstSave = await discoveryPost(one.cookie, {
+    operation: "save",
+    input: matched[0].id,
+  });
+  const secondSave = await discoveryPost(one.cookie, {
+    operation: "save",
+    input: matched[0].id,
+  });
+  assert.equal(firstSave.status, 200);
+  assert.equal(
+    (await firstSave.json()).result,
+    (await secondSave.json()).result,
+  );
+  assert.equal(
+    (
+      await db.application.findUniqueOrThrow({
+        where: { discoveredJobId: matched[0].id },
+      })
+    ).stage,
+    "WISHLIST",
+  );
   const signout = await fetch(origin + "/api/auth/sign-out", {
     method: "POST",
     headers: { ...headers, Cookie: one.cookie },
@@ -169,7 +251,7 @@ try {
   });
   assert.equal(signin.status, 200, await signin.clone().text());
   console.log(
-    "HTTP smoke passed: pages, sign-up/sign-in/sign-out, session revocation, private CRUD, ownership, CSRF, stale edits, archive/restore, persisted dashboard.",
+    "HTTP smoke passed: pages, sign-up/sign-in/sign-out, session revocation, private CRUD, ownership, CSRF, stale edits, archive/restore, persisted dashboard, Kanban moves, discovery profiles/runs and idempotent save.",
   );
 } finally {
   await db.user.deleteMany({ where: { id: { in: createdIds } } });

@@ -40,6 +40,8 @@ Change DATABASE_URL in `.env` to `postgresql://career:career_local@127.0.0.1:543
 
 | Command                                    | Purpose                                               |
 | ------------------------------------------ | ----------------------------------------------------- |
+| npm run workflows:dev                      | Local hourly Inngest scheduler at 127.0.0.1:8288      |
+| npm run test:workflow                      | End-to-end local workflow smoke check                 |
 | npm run dev                                | Development app at 127.0.0.1:3100                     |
 | npm run build / npm start                  | Production build / local production server            |
 | npm run setup:env                          | Create missing .env with a random secret              |
@@ -67,7 +69,8 @@ The seed and HTTP checks do not print credentials. The HTTP check deletes only i
 | SEED_EMAIL                                                     | Seed only | Existing account to receive synthetic examples                                 |
 | MICROSOFT_CLIENT_ID / CLIENT_SECRET / TENANT_ID / REDIRECT_URI | No        | Reserved for Week 3 Outlook integration                                        |
 | TOKEN_ENCRYPTION_KEY                                           | No        | Reserved for encrypted Outlook token cache                                     |
-| INNGEST_EVENT_KEY / SIGNING_KEY                                | No        | Reserved for Week 2 workflows                                                  |
+| INNGEST_DEV                                                    | Local     | Enables unsigned development workflows only with a loopback APP_URL            |
+| INNGEST_EVENT_KEY / INNGEST_SIGNING_KEY                        | Hosted    | Inngest environment event and request-signing keys                             |
 | JOB_DISCOVERY_PROVIDER                                         | No        | Reserved; `mock` is the initial provider                                       |
 
 No secrets belong in NEXT_PUBLIC_ variables, source control, or logs. Better Auth sessions follow its standard database storage format (see implementation notes); Outlook tokens are not stored or used yet.
@@ -79,3 +82,9 @@ GitHub Actions provisions PostgreSQL 17, applies migrations, validates/generates
 Production hosting is not provisioned in this milestone. Target a Node-compatible Next.js host with managed PostgreSQL, pooled runtime connections, and a separate migration-capable connection if your provider requires one. Apply reviewed migrations with `npm run db:deploy`, configure HTTPS APP_URL and secrets, and run smoke tests before exposure. Build output is standard Next.js, not a Cloudflare Worker artifact for Sites.
 
 Before public release: implement verified email and password recovery, configure trusted proxy IP handling/network limits, verify backups/restores, add account export/deletion, and perform browser interaction/accessibility QA. The public portfolio demo must use synthetic data only.
+
+## Week 2 scheduling
+
+See [WEEK_TWO.md](WEEK_TWO.md) for the current workflow setup and semantics. Add `INNGEST_DEV="1"` to an existing local .env, keep APP_URL on loopback, and run `npm run workflows:dev` alongside the application and database. New .env examples include this setting. Disable it in hosted environments and configure Inngest environment keys there. The UI uses the fixed mock provider; JOB_DISCOVERY_PROVIDER remains reserved for future provider selection.
+
+The CI suite now starts a local Inngest runner and validates actual event delivery after the production build. The local runner requires its downloaded native binary; review and enable its postinstall if your package manager blocks it.

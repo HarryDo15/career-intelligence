@@ -158,6 +158,8 @@ model StageEvent {
 }
 
 model SearchProfile {
+  version      Int @default(0)
+  runs         WorkflowRun[]
   id           String @id @default(cuid())
   userId       String
   name         String
@@ -287,6 +289,9 @@ model OutreachDraft {
 }
 
 model WorkflowRun {
+  profileId   String?
+  profile     SearchProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+  resultCount Int @default(0)
   id          String @id @default(cuid())
   userId      String
   workflow    String
@@ -298,6 +303,7 @@ model WorkflowRun {
   errorCode   String?
   user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, workflow, startedAt])
+  @@index([profileId, startedAt])
 }
 
 model AuditLog {

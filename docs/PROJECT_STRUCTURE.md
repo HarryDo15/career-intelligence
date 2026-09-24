@@ -48,8 +48,18 @@ career-intelligence/
 └── package.json
 ```
 
+## Week 2 additions
+
+- `src/components/workspace/kanban.tsx` — board and stage moves.
+- `src/components/workspace/analytics-charts.tsx`, `src/lib/analytics.ts`, `src/server/analytics-service.ts` — cohort metrics and charts.
+- `src/app/discovered`, `src/components/workspace/discovery.tsx`, `src/features/discovery`, `src/server/discovery-service.ts`, `src/lib/jobs.ts` — profiles and discovery.
+- `src/server/workflows`, `src/app/api/inngest` — hourly dispatch and per-profile background processing.
+- `src/app/api/discovery` — authenticated discovery API sharing the domain service with Server Actions.
+- `prisma/migrations/202609240001_discovery` — additive profile version and workflow log fields.
+- `tests/analytics.test.ts`, `tests/discovery.test.ts`, `tests/integration/week-two.test.ts`, `scripts/workflow-smoke.ts` — Week 2 checks.
+
 ## Planned additions
 
-Week 2 adds Kanban, richer cohort analytics, search profiles, a job-provider interface, and Inngest workflow registration. Week 3 adds MSAL/Graph under `server/integrations/microsoft`, email signal matching and review, contact management, and draft generation. Week 4 adds browser E2E and deployment evidence.
+Week 3 adds MSAL/Graph under `server/integrations/microsoft`, confirmation-email import and status review, contact management, and draft generation. Week 4 adds browser E2E and deployment evidence.
 
-Server Components load user-scoped services and pass explicit DTOs to client components. Actions and the JSON API share one validation/service layer. Database secrets and authentication stay in modules marked `server-only`; the injectable domain service is imported only by server entry points and tests.
+Server Components load user-scoped services and pass explicit DTOs to client components. Actions and JSON APIs share validation/service layers. Database secrets and authentication stay server-side; injectable domain services are used by server entry points and tests.

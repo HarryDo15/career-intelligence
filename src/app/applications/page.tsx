@@ -1,4 +1,5 @@
 import { Shell } from "@/components/workspace/shell";
+import { Kanban } from "@/components/workspace/kanban";
 import { Tracker } from "@/components/workspace/tracker";
 import { requireUser } from "@/server/auth";
 import { getDb } from "@/server/db";
@@ -20,6 +21,18 @@ export default async function Applications({
   const rawPage = Number(params.page);
   const page =
     Number.isInteger(rawPage) && rawPage > 0 && rawPage <= 10000 ? rawPage : 1;
+  if (params.layout === "board") {
+    const columns = await applicationService(getDb()).board(user.id, query);
+    return (
+      <Shell name={user.name} active="applications">
+        <Kanban
+          columns={columns}
+          query={query}
+          initialNew={params.new === "1"}
+        />
+      </Shell>
+    );
+  }
   const archived = params.archived === "true";
   const result = await applicationService(getDb()).list(user.id, {
     query,

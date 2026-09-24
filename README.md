@@ -2,7 +2,7 @@
 
 A personal job-search workspace built with Next.js App Router, React Server Components, TypeScript, Tailwind CSS, shadcn-style Radix primitives, Lucide, Recharts, PostgreSQL, Prisma, and Better Auth.
 
-**Status: Week 1 implemented.** Sign-in, persistent application tracking, and a starter overview work locally. A clearly labeled, read-only synthetic demo is available without an account. Inngest discovery, Outlook sync, Kanban, and networking remain on the roadmap. This is not yet a production release.
+**Status: Weeks 1–2 implemented.** Sign-in, persistent tracking, Kanban, cohort analytics, and hourly mock discovery work locally. A read-only synthetic demo is available without an account. Outlook import, networking, and production hosting remain planned. This is not yet a production release.
 
 ## What works
 
@@ -10,7 +10,9 @@ A personal job-search workspace built with Next.js App Router, React Server Comp
 - Create and edit applications across Wishlist, Applied, Screening, Technical, Offer, and Rejected.
 - Search by company/role, filter by stage, paginate, archive, and restore.
 - User-scoped queries, server-side validation, optimistic version conflicts, transactional stage history, and audit events.
-- Overview with response metrics, current pipeline, recent applications, and a 30-day Recharts activity chart.
+- Kanban with drag/drop, keyboard-accessible stage menus, required milestone dates, and optimistic conflict feedback.
+- Date-range/timezone-aware cohort analytics, weekly/monthly trends, current stage breakdown, and historical conversion funnel.
+- Search profiles, explainable synthetic matches, hourly Inngest workflows, and duplicate-safe save to Wishlist.
 - PostgreSQL migration with SQL CHECK constraints and idempotent opt-in synthetic seeding.
 
 ## Local quick start
@@ -43,6 +45,10 @@ The seed never overwrites existing records. No account or password is committed.
 
 If your package manager blocks install scripts, review and allow the platform-specific `@embedded-postgres/*` postinstall script, which restores the packaged PostgreSQL symlinks. Alternatively use Docker as documented in [Setup](docs/SETUP.md).
 
+## Run discovery
+
+Add `INNGEST_DEV="1"` to an existing local `.env` (included for new setups), then start `npm run workflows:dev` alongside the app. Create a profile under Discovered jobs; manual mock searches work without the scheduler. All discovered listings are fictional. See [Week 2](docs/WEEK_TWO.md).
+
 ## Validation
 
 ```sh
@@ -53,6 +59,7 @@ npm test
 DATABASE_URL=postgresql://career:career_local@127.0.0.1:54329/career_test npm run db:deploy
 TEST_DATABASE_URL=postgresql://career:career_local@127.0.0.1:54329/career_test npm run test:integration
 npm run test:http  # local app running, ALLOW_REGISTRATION=true
+npm run test:workflow  # local Inngest runner and app running
 npm run build
 npm audit
 ```
@@ -61,7 +68,8 @@ Integration tests refuse databases whose name does not end in `_test`. HTTP smok
 
 ## Documentation
 
-- [Current implementation and architectural decisions](docs/IMPLEMENTATION.md)
+- [Week 2 implementation and workflow guide](docs/WEEK_TWO.md)
+- [Week 1 implementation and architectural decisions](docs/IMPLEMENTATION.md)
 - [Architecture and future integration design](docs/ARCHITECTURE.md)
 - [Project structure](docs/PROJECT_STRUCTURE.md)
 - [One-month roadmap](docs/ROADMAP.md)

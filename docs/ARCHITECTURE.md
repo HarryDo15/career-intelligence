@@ -1,6 +1,6 @@
 # Architecture
 
-> This document describes the target design. See [IMPLEMENTATION.md](IMPLEMENTATION.md) for the delivered Week 1 behavior and explicit differences, including Better Auth storage and initial analytics.
+> This document describes the target design. See [WEEK_TWO.md](WEEK_TWO.md) for the current milestone and [IMPLEMENTATION.md](IMPLEMENTATION.md) for the delivered Week 1 behavior and explicit differences, including Better Auth storage and initial analytics.
 
 ## Decision: a modular Next.js monolith
 
