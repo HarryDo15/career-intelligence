@@ -24,7 +24,9 @@
     "setup:env": "tsx scripts/setup-env.ts",
     "test:http": "tsx scripts/http-smoke.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "workflows:dev": "inngest dev --host 127.0.0.1 --no-discovery -u http://127.0.0.1:3100/api/inngest",
+    "test:workflow": "tsx scripts/workflow-smoke.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -36,6 +38,7 @@
     "embedded-postgres": "^18.4.0-beta.17",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.5",
+    "inngest-cli": "^1.45.1",
     "prettier": "^3.9.7",
     "prisma": "^7.0.0",
     "tailwindcss": "^4.3.3",
@@ -43,6 +46,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -50,6 +54,7 @@
     "better-auth": "^1.7.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "inngest": "^4.21.0",
     "lucide-react": "^1.46.0",
     "next": "^16.3.5",
     "pg": "^8.23.0",
@@ -64,6 +69,9 @@
     "@prisma/config": {
       "deepmerge-ts": "8.0.2"
     },
-    "mysql2": "3.24.4"
+    "mysql2": "3.24.4",
+    "inngest-cli": {
+      "adm-zip": "0.6.1"
+    }
   }
 }

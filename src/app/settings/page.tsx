@@ -1,7 +1,7 @@
 import { Shell } from "@/components/workspace/shell";
 import { SignOut } from "@/components/workspace/sign-out";
 import { requireUser } from "@/server/auth";
-import { LockKeyhole, Mail, Search, Users } from "lucide-react";
+import { LockKeyhole, Mail, Users } from "lucide-react";
 export const dynamic = "force-dynamic";
 export default async function Settings() {
   const user = await requireUser();
@@ -35,11 +35,6 @@ export default async function Settings() {
         </p>
         <div className="space-y-5">
           {[
-            {
-              icon: Search,
-              name: "Automated job discovery",
-              note: "Hourly search profiles and discovered opportunities · Week 2",
-            },
             {
               icon: Mail,
               name: "Outlook email sync",

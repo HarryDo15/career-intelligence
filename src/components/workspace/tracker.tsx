@@ -114,6 +114,14 @@ export function Tracker({
           </Button>
         )}
       </div>
+      <div className="mb-4 flex justify-end">
+        <Link
+          className="rounded-lg border border-border bg-white px-4 py-2 text-xs text-primary"
+          href={`${base}${demo ? "&view=applications&" : "?"}layout=board&q=${encodeURIComponent(query)}`}
+        >
+          Switch to board →
+        </Link>
+      </div>
       <section className="panel overflow-hidden">
         <div className="flex gap-6 border-b border-border px-6">
           <Link
@@ -316,8 +324,8 @@ export function Tracker({
         )}
         <div className="flex items-center justify-between border-t border-border px-6 py-4 text-[11px] text-muted-foreground">
           <span>
-            {total === 0
-              ? "0 applications"
+            {rows.length === 0
+              ? `0 shown · ${total} applications`
               : `${(page - 1) * 20 + 1}–${Math.min(page * 20, total)} of ${total} applications`}
           </span>
           <div className="flex items-center gap-3">

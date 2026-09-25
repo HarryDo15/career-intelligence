@@ -28,6 +28,7 @@ jobs:
       AUTH_SECRET: ci-only-ephemeral-auth-secret-not-for-deployment-123456789
       ALLOW_REGISTRATION: "true"
       NEXT_TELEMETRY_DISABLED: "1"
+      INNGEST_DEV: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,4 +52,9 @@ jobs:
           trap 'kill "$career_server_pid" 2>/dev/null || true' EXIT
           node scripts/wait-server.mjs
           npm run test:http
+          npm run workflows:dev > /tmp/career-inngest.log 2>&1 &
+          career_workflow_pid=$!
+          trap 'kill "$career_workflow_pid" "$career_server_pid" 2>/dev/null || true' EXIT
+          node scripts/wait-workflows.mjs
+          npm run test:workflow
       - run: npm audit --audit-level=high

@@ -35,3 +35,14 @@ export async function archiveApplication(meta: unknown, archived: unknown) {
     return { ok: false as const, error: publicError(error) };
   }
 }
+
+export async function moveApplication(meta: unknown, input: unknown) {
+  const user = await requireUser();
+  try {
+    await applicationService(getDb()).move(user.id, meta, input);
+    refresh();
+    return { ok: true as const };
+  } catch (error) {
+    return { ok: false as const, error: publicError(error) };
+  }
+}

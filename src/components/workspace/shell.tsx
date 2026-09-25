@@ -70,6 +70,12 @@ export function Shell({
               href: demo ? "/demo?view=applications" : "/applications",
             },
             {
+              key: "discovered",
+              label: "Discovered jobs",
+              icon: Compass,
+              href: demo ? "/demo?view=discovered" : "/discovered",
+            },
+            {
               key: "settings",
               label: "Settings",
               icon: Settings2,
@@ -97,7 +103,7 @@ export function Shell({
           </p>
           <div className="mt-4 flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="size-1.5 rounded-full bg-emerald-500" />
-            Week 1 · Tracker foundation
+            Your search, with direction
           </div>
         </div>
       </aside>
@@ -120,12 +126,15 @@ export function Shell({
         </div>
       </header>
       <nav
-        className="flex gap-5 border-b border-border bg-white px-5 py-3 text-xs lg:hidden"
+        className="flex flex-wrap gap-5 border-b border-border bg-white px-5 py-3 text-xs lg:hidden"
         aria-label="Mobile navigation"
       >
         <Link href={demo ? "/demo" : "/dashboard"}>Overview</Link>
         <Link href={demo ? "/demo?view=applications" : "/applications"}>
           Applications
+        </Link>
+        <Link href={demo ? "/demo?view=discovered" : "/discovered"}>
+          Discovered jobs
         </Link>
         <Link href={demo ? "/sign-in" : "/settings"}>
           {demo ? "Sign in" : "Settings"}

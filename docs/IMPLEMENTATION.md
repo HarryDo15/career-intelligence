@@ -1,5 +1,7 @@
 # Week 1 implementation
 
+> Historical milestone record. See [WEEK_TWO.md](WEEK_TWO.md) for the current board, cohort analytics, discovery, workflows, and validation.
+
 ## Delivered September 17, 2026
 
 Next.js 16 / React 19 application; Tailwind 4 theme; locally owned shadcn-style Button and Radix Dialog primitives; Lucide icons; Recharts preview and user overview; Better Auth email/password authentication; Prisma 7 PostgreSQL persistence; applications table, filters, pagination, create/edit dialog, archive/restore, stage history and audit trail.
