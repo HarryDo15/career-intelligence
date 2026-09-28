@@ -1,6 +1,6 @@
 # Architecture
 
-> This document describes the target design. See [WEEK_TWO.md](WEEK_TWO.md) for the current milestone and [IMPLEMENTATION.md](IMPLEMENTATION.md) for the delivered Week 1 behavior and explicit differences, including Better Auth storage and initial analytics.
+> This document describes the target design. See [OUTLOOK_SETUP.md](OUTLOOK_SETUP.md) for the implemented Outlook slice, [WEEK_TWO.md](WEEK_TWO.md) for discovery and analytics and [IMPLEMENTATION.md](IMPLEMENTATION.md) for the delivered Week 1 behavior and explicit differences, including Better Auth storage and initial analytics.
 
 ## Decision: a modular Next.js monolith
 

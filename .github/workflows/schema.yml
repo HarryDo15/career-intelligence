@@ -29,6 +29,8 @@ jobs:
       ALLOW_REGISTRATION: "true"
       NEXT_TELEMETRY_DISABLED: "1"
       INNGEST_DEV: "1"
+      # Disposable fixture encryption key; never use for deployment.
+      TOKEN_ENCRYPTION_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

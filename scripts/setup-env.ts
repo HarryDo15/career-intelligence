@@ -7,6 +7,13 @@ if (existsSync(".env")) {
     'AUTH_SECRET=""',
     `AUTH_SECRET="${randomBytes(32).toString("base64")}"`,
   );
-  writeFileSync(".env", env, { mode: 0o600 });
+  writeFileSync(
+    ".env",
+    env.replace(
+      'TOKEN_ENCRYPTION_KEY=""',
+      `TOKEN_ENCRYPTION_KEY="${randomBytes(32).toString("hex")}"`,
+    ),
+    { mode: 0o600 },
+  );
   console.log("Created local .env with a random auth secret.");
 }

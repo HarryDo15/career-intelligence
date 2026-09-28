@@ -60,6 +60,8 @@ career-intelligence/
 
 ## Planned additions
 
-Week 3 adds MSAL/Graph under `server/integrations/microsoft`, confirmation-email import and status review, contact management, and draft generation. Week 4 adds browser E2E and deployment evidence.
+Remaining Week 3 work adds contact management and draft generation. Week 4 adds browser E2E and deployment evidence.
 
 Server Components load user-scoped services and pass explicit DTOs to client components. Actions and JSON APIs share validation/service layers. Database secrets and authentication stay server-side; injectable domain services are used by server entry points and tests.
+
+Week 3 Outlook implementation: `src/server/outlook/` contains crypto, MSAL, OAuth state, Graph transport, sync and review services; `src/features/outlook/actions.ts` is the authenticated mutation boundary; `/email-review` is the review UI and `/api/integrations/outlook/{connect,callback}` handles consent. See [OUTLOOK_SETUP.md](OUTLOOK_SETUP.md).

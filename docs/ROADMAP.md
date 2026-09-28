@@ -1,10 +1,10 @@
 # One-month delivery plan
 
-## Progress — September 24, 2026
+## Progress — September 28, 2026
 
 Weeks 1–2 are implemented. Week 2 adds the keyboard-accessible Kanban board, timezone-aware cohort charts/funnel, profile CRUD, matching explanations, hourly Inngest mock discovery, and duplicate-safe save to Wishlist. Real background event delivery has been verified locally. Both milestones remain reviewable in GitHub pull requests; public hosting and browser interaction testing are still outstanding.
 
-Week 3 now explicitly includes reviewed creation of applications from confirmation emails, in addition to updates to existing applications. No personal mailbox has been accessed.
+The Week 3 Outlook slice now implements OAuth/PKCE, encrypted credentials and excerpts, resumable Inbox sync, review-only application creation/updates, and disconnect. Live Microsoft consent validation awaits app registration. No personal mailbox has been accessed. Networking/contact drafts remain the next Week 3 slice. See [Outlook setup](OUTLOOK_SETUP.md).
 
 Assumption: one developer, approximately 20–25 focused hours per week. Dates assume a September 15, 2026 start. The first month targets a deployed portfolio MVP with measured release gates; broader production hardening continues afterward. Each week ends with a reviewable GitHub PR and short demo.
 

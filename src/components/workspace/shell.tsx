@@ -5,6 +5,7 @@ import {
   ChartNoAxesCombined,
   Compass,
   Layers2,
+  Mail,
   Settings2,
   Sparkles,
   Target,
@@ -76,6 +77,12 @@ export function Shell({
               href: demo ? "/demo?view=discovered" : "/discovered",
             },
             {
+              key: "email-review",
+              label: "Email review",
+              icon: Mail,
+              href: demo ? "/sign-in" : "/email-review",
+            },
+            {
               key: "settings",
               label: "Settings",
               icon: Settings2,
@@ -136,6 +143,7 @@ export function Shell({
         <Link href={demo ? "/demo?view=discovered" : "/discovered"}>
           Discovered jobs
         </Link>
+        {!demo && <Link href="/email-review">Email review</Link>}
         <Link href={demo ? "/sign-in" : "/settings"}>
           {demo ? "Sign in" : "Settings"}
         </Link>
