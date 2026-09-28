@@ -52,6 +52,8 @@ Each manual sync processes one bounded page. A scheduled execution processes up 
 
 ## 3. Review the suggestions
 
+Email and sync timestamps are labeled UTC so server rendering and browser display agree.
+
 - Inspect the sender, source excerpt, suggested stage, company, and role. Keyword rules are fallible; no prediction is treated as confirmed history.
 - Select an existing application or create one. If company and role exactly match an existing record, new creation is blocked and you must link it instead. Restore an archived application in the tracker before linking.
 - Set the submission date for new records. For confirmation emails accepted on their received calendar date, the email timestamp becomes the submission timestamp; this is an approximation you can later correct in the tracker. Other manual date inputs retain the existing UTC-midnight convention.

@@ -17,6 +17,8 @@ type App = {
   appliedAt: string | null;
   stage: string;
 };
+const timestamp = (value: string) =>
+  `${new Date(value).toLocaleString("en-GB", { timeZone: "UTC" })} UTC`;
 const stages = ["APPLIED", "SCREENING", "TECHNICAL", "OFFER", "REJECTED"];
 export function EmailReview({
   configured,
@@ -90,13 +92,13 @@ export function EmailReview({
             </p>
             <p className="mt-3 text-xs text-muted-foreground">
               {connection?.lastSyncedAt
-                ? `Last completed sync: ${new Date(connection.lastSyncedAt).toLocaleString()}`
+                ? `Last completed sync: ${timestamp(connection.lastSyncedAt)}`
                 : "No completed sync yet."}
               {connection?.lastErrorCode
                 ? ` Last sync status: ${connection.lastErrorCode}.`
                 : ""}
               {connection?.nextSyncAt
-                ? ` Eligible to retry after ${new Date(connection.nextSyncAt).toLocaleString()}.`
+                ? ` Eligible to retry after ${timestamp(connection.nextSyncAt)}.`
                 : ""}
             </p>
           </div>
@@ -226,7 +228,7 @@ function ReviewCard({
             className="text-xs text-muted-foreground"
             dateTime={row.receivedAt}
           >
-            {new Date(row.receivedAt).toLocaleString()}
+            {timestamp(row.receivedAt)}
           </time>
         </div>
         <h2 className="font-semibold break-words">
