@@ -150,3 +150,27 @@ test("OAuth configuration requires same-origin HTTPS or HTTP loopback", () => {
     }
   }
 });
+
+test("Graph accepts OData folder-key continuation URLs without changing opaque tokens", async () => {
+  for (const path of [
+    "mailFolders('AQMkFixture=')",
+    "mailfolders(%27AQMkFixture%3D%27)",
+    "mailFolders/AQMkFixture=",
+  ]) {
+    const continuation = `https://graph.microsoft.com/v1.0/me/${path}/messages/delta?$deltatoken=opaque%2Bfixture%3D`;
+    assert.equal(safeGraphUrl(continuation), continuation);
+    const result = await fetchMailPage("fixture-token", url, async () =>
+      Response.json({ value: [], "@odata.deltaLink": continuation }),
+    );
+    assert.equal(result.delta, continuation);
+  }
+  for (const path of [
+    "mailFolders('fixture')/messages",
+    "mailFolders('fixture')/messages/delta/extra",
+    "mailFolders/fixture/childFolders/other/messages/delta",
+  ]) {
+    assert.throws(() =>
+      safeGraphUrl(`https://graph.microsoft.com/v1.0/me/${path}`),
+    );
+  }
+});

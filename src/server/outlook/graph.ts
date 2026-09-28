@@ -13,8 +13,9 @@ export function safeGraphUrl(raw: string) {
   const u = new URL(raw);
   if (
     u.origin !== "https://graph.microsoft.com" ||
-    !u.pathname.startsWith("/v1.0/me/mailFolders/") ||
-    !u.pathname.endsWith("/messages/delta") ||
+    !/^\/v1\.0\/me\/mailfolders(?:\/[^/]+|\('[^']+'\))\/messages\/delta$/i.test(
+      decodeURIComponent(u.pathname),
+    ) ||
     u.username ||
     u.password ||
     u.hash
