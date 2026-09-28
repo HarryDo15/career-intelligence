@@ -26,7 +26,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "workflows:dev": "inngest dev --host 127.0.0.1 --no-discovery -u http://127.0.0.1:3100/api/inngest",
-    "test:workflow": "tsx scripts/workflow-smoke.ts"
+    "test:workflow": "tsx scripts/workflow-smoke.ts",
+    "setup:outlook-key": "tsx scripts/setup-outlook-key.ts"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
@@ -46,6 +47,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
+    "@azure/msal-node": "^7.0.0",
     "@js-temporal/polyfill": "^0.5.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",

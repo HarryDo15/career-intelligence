@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { outlookSync } from "../src/server/outlook/sync";
+import { outlookReview } from "../src/server/outlook/review";
+import { seal } from "../src/server/outlook/crypto";
 const origin = process.env.APP_URL!;
 if (!["127.0.0.1", "localhost"].includes(new URL(origin).hostname))
   throw new Error("HTTP smoke is restricted to localhost.");
@@ -151,6 +154,7 @@ try {
   for (const path of [
     "/applications?layout=board",
     "/discovered",
+    "/email-review",
     "/dashboard?start=2026-01-01&end=2026-01-31&group=month&timezone=UTC",
   ]) {
     const page = await fetch(origin + path, {
@@ -230,6 +234,90 @@ try {
     ).stage,
     "WISHLIST",
   );
+  const outlookConnect = origin + "/api/integrations/outlook/connect";
+  assert.equal(
+    (
+      await fetch(outlookConnect, {
+        method: "POST",
+        headers: { Origin: origin },
+        redirect: "manual",
+      })
+    ).status,
+    401,
+  );
+  assert.equal(
+    (
+      await fetch(outlookConnect, {
+        method: "POST",
+        headers: { Cookie: one.cookie, Origin: "https://evil.example" },
+        redirect: "manual",
+      })
+    ).status,
+    403,
+  );
+  const callback = await fetch(
+    origin +
+      "/api/integrations/outlook/callback?state=invalid&code=synthetic-invalid",
+    { headers: { Cookie: one.cookie }, redirect: "manual" },
+  );
+  assert.equal(callback.status, 303);
+  assert.ok(
+    callback.headers
+      .get("location")
+      ?.endsWith("/email-review?connection=failed"),
+  );
+  assert.equal(
+    await db.outlookConnection.count({ where: { userId: { in: createdIds } } }),
+    0,
+  );
+  const mailbox = await db.outlookConnection.create({
+    data: {
+      userId: createdIds[0],
+      microsoftAccountId: `fixture-${run}`,
+      encryptedTokenCache: seal("synthetic-cache", `tokens:${createdIds[0]}`),
+      scopes: ["Mail.Read"],
+      importSince: new Date(Date.now() - 30 * 86400_000),
+    },
+  });
+  const received = new Date(Date.now() - 86400_000).toISOString();
+  await outlookSync(db, {
+    refresh: async () => ({ token: "synthetic", cache: "synthetic-cache" }),
+    page: async () => ({
+      messages: [
+        {
+          id: run,
+          receivedDateTime: received,
+          subject: "Application received <script>synthetic</script>",
+          bodyPreview:
+            "Thank you for applying for Engineer at HTTP Mail Fixture.",
+        },
+      ],
+      delta:
+        "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$deltatoken=synthetic",
+    }),
+  })(createdIds[0], mailbox.id);
+  const reviewHtml = await (
+    await fetch(origin + "/email-review", { headers: { Cookie: one.cookie } })
+  ).text();
+  assert.ok(reviewHtml.includes("HTTP Mail Fixture"));
+  assert.ok(reviewHtml.includes("&lt;script&gt;synthetic&lt;/script&gt;"));
+  assert.ok(!reviewHtml.includes("<script>synthetic</script>"));
+  const otherHtml = await (
+    await fetch(origin + "/email-review", { headers: { Cookie: two.cookie } })
+  ).text();
+  assert.ok(!otherHtml.includes("HTTP Mail Fixture"));
+  const suggestion = (await outlookReview(db).list(createdIds[0])).rows[0];
+  await outlookReview(db).accept(createdIds[0], {
+    id: suggestion.id,
+    company: "HTTP Mail Fixture",
+    title: "Engineer",
+    stage: "APPLIED",
+    appliedAt: received.slice(0, 10),
+  });
+  const afterImport = await (
+    await fetch(origin + "/dashboard", { headers: { Cookie: one.cookie } })
+  ).text();
+  assert.ok(afterImport.includes("HTTP Mail Fixture"));
   const signout = await fetch(origin + "/api/auth/sign-out", {
     method: "POST",
     headers: { ...headers, Cookie: one.cookie },
@@ -251,7 +339,7 @@ try {
   });
   assert.equal(signin.status, 200, await signin.clone().text());
   console.log(
-    "HTTP smoke passed: pages, sign-up/sign-in/sign-out, session revocation, private CRUD, ownership, CSRF, stale edits, archive/restore, persisted dashboard, Kanban moves, discovery profiles/runs and idempotent save.",
+    "HTTP smoke passed: pages, sign-up/sign-in/sign-out, session revocation, private CRUD, ownership, CSRF, stale edits, archive/restore, persisted dashboard, Kanban moves, discovery profiles/runs, idempotent save, Outlook page, connection CSRF and invalid callback rejection, encrypted source rendering, and reviewed import reflected in the dashboard.",
   );
 } finally {
   await db.user.deleteMany({ where: { id: { in: createdIds } } });

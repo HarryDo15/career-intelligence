@@ -1,7 +1,8 @@
 import { Shell } from "@/components/workspace/shell";
 import { SignOut } from "@/components/workspace/sign-out";
 import { requireUser } from "@/server/auth";
-import { LockKeyhole, Mail, Users } from "lucide-react";
+import Link from "next/link";
+import { LockKeyhole, Users } from "lucide-react";
 export const dynamic = "force-dynamic";
 export default async function Settings() {
   const user = await requireUser();
@@ -9,7 +10,7 @@ export default async function Settings() {
     <Shell active="settings" name={user.name}>
       <h1 className="text-[27px] font-semibold">Your workspace</h1>
       <p className="mt-2 mb-7 text-sm text-muted-foreground">
-        Account details and what’s coming next.
+        Account details and connected services.
       </p>
       <section className="panel mb-6 p-6">
         <div className="mb-5 flex items-center gap-2 font-semibold">
@@ -28,6 +29,19 @@ export default async function Settings() {
         </dl>
         <SignOut />
       </section>
+      <section className="panel mb-6 p-6">
+        <h2 className="font-semibold">Outlook</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Connect your Inbox, review application updates, or disconnect and
+          delete imported email excerpts.
+        </p>
+        <Link
+          className="mt-4 inline-block text-sm font-semibold text-primary"
+          href="/email-review"
+        >
+          Manage Outlook and email review →
+        </Link>
+      </section>
       <section className="panel p-6">
         <h2 className="font-semibold">On the roadmap</h2>
         <p className="mt-1 mb-5 text-xs text-muted-foreground">
@@ -35,11 +49,6 @@ export default async function Settings() {
         </p>
         <div className="space-y-5">
           {[
-            {
-              icon: Mail,
-              name: "Outlook email sync",
-              note: "Opt-in status signals and a review queue · Week 3",
-            },
             {
               icon: Users,
               name: "Networking assistant",

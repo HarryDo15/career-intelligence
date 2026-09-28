@@ -212,6 +212,12 @@ model JobMatch {
 }
 
 model OutlookConnection {
+  version Int @default(0)
+  importSince DateTime @default(now())
+  syncLease String?
+  leaseUntil DateTime?
+  nextSyncAt DateTime?
+  lastErrorCode String?
   id              String @id @default(cuid())
   userId          String @unique
   microsoftAccountId String @unique
@@ -239,6 +245,8 @@ model MailSyncCursor {
 }
 
 model EmailSignal {
+  // Minimal source excerpt and suggested company/title, encrypted at rest.
+  encryptedPayload String? @db.Text
   id             String @id @default(cuid())
   connectionId   String
   messageId      String
