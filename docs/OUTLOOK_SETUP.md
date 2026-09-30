@@ -44,7 +44,7 @@ npm run dev
 npm run workflows:dev
 ```
 
-Sign in to the app and open **Email review**. Choose **Connect Outlook**, select your Microsoft account, and consent. On return, choose **Sync Inbox** for an immediate first page, or let the ten-minute scheduled job process the initial import. The scheduler needs the Inngest runner to remain running locally; hosted scheduling requires the deployment configuration described in WEEK_TWO.md.
+Sign in to the app and open **Email review**. Choose **Connect Outlook**, select your Microsoft account, and consent. On return, choose **Sync mail** for an immediate first page, or let the ten-minute scheduled job process the initial import. The scheduler needs the Inngest runner to remain running locally; hosted scheduling requires the deployment configuration described in WEEK_TWO.md.
 
 The app starts with the last 30 days of **Inbox only**. It requests subject, sender, received time, message ID, draft state, and body preview; it does not request attachments or full bodies. Graph's delegated Mail.Read permission is broader than this deliberately limited query. Mail moved out of Inbox before discovery is outside this milestone's scope. Older imports and other folders are not configurable yet.
 
@@ -83,3 +83,7 @@ Tests cover encryption/context binding, parsing, Graph continuation validation, 
 Still required with a real registration: successful consent, declined consent, expired/revoked consent, personal and organizational mailbox compatibility, token renewal over time, and browser/accessibility interaction checks. Networking/contact features remain a separate Week 3 slice.
 
 References: [authorization code and PKCE](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow), [MSAL Node caching](https://learn.microsoft.com/en-us/entra/msal/javascript/node/caching), [message delta](https://learn.microsoft.com/en-us/graph/api/message-delta?view=graph-rest-1.0), [delta recovery](https://learn.microsoft.com/en-us/graph/delta-query-overview).
+
+### Gmail displayed in Outlook
+
+The Outlook desktop/mobile app can display a Gmail account. Microsoft Graph cannot read that Gmail mailbox. Use the dashboard's separate **Connect Gmail** card and [Gmail setup guide](GMAIL_SETUP.md). A Gmail email address used as a Microsoft sign-in is not evidence that the Microsoft mailbox contains those messages.

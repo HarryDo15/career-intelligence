@@ -42,21 +42,22 @@ enum RunStatus {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
+  id            String             @id @default(cuid())
+  email         String             @unique
   name          String
-  emailVerified Boolean @default(false)
+  emailVerified Boolean            @default(false)
   image         String?
-  timezone      String   @default("Asia/Singapore")
-  resumeContext String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  timezone      String             @default("Asia/Singapore")
+  resumeContext String?            @db.Text
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
   accounts      Account[]
   sessions      Session[]
   applications  Application[]
   profiles      SearchProfile[]
   jobs          DiscoveredJob[]
   outlook       OutlookConnection?
+  gmail         GmailConnection?
   contacts      Contact[]
   runs          WorkflowRun[]
   logs          AuditLog[]
@@ -244,24 +245,50 @@ model MailSyncCursor {
   @@unique([connectionId, folderId])
 }
 
+model GmailConnection {
+  id                 String        @id @default(cuid())
+  userId             String        @unique
+  googleAccountId    String        @unique
+  emailAddress       String
+  encryptedTokens    String        @db.Text
+  encryptedSyncState String?       @db.Text
+  scopes             String[]
+  version            Int           @default(0)
+  importSince        DateTime      @default(now())
+  connectedAt        DateTime      @default(now())
+  lastSyncedAt       DateTime?
+  reauthRequired     Boolean       @default(false)
+  lastErrorCode      String?
+  nextSyncAt         DateTime?
+  syncLease          String?
+  leaseUntil         DateTime?
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signals            EmailSignal[]
+}
+
 model EmailSignal {
   // Minimal source excerpt and suggested company/title, encrypted at rest.
-  encryptedPayload String? @db.Text
-  id             String @id @default(cuid())
-  connectionId   String
-  messageId      String
-  applicationId  String?
-  receivedAt     DateTime
-  proposedStage  ApplicationStage?
-  confidence     Float
+  encryptedPayload  String?            @db.Text
+  id                String             @id @default(cuid())
+  connectionId      String?
+  gmailConnectionId String?
+  messageId         String
+  applicationId     String?
+  receivedAt        DateTime
+  proposedStage     ApplicationStage?
+  confidence        Float
   classifierVersion String
-  reasonCode     String
-  reviewStatus   ReviewStatus @default(PENDING)
-  reviewedAt     DateTime?
-  createdAt      DateTime @default(now())
-  connection     OutlookConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  application    Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  reasonCode        String
+  reviewStatus      ReviewStatus       @default(PENDING)
+  reviewedAt        DateTime?
+  createdAt         DateTime           @default(now())
+  gmailConnection   GmailConnection?   @relation(fields: [gmailConnectionId], references: [id], onDelete: Cascade)
+  connection        OutlookConnection? @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  application       Application?       @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
   @@unique([connectionId, messageId])
+  @@unique([gmailConnectionId, messageId])
+  @@index([gmailConnectionId, reviewStatus])
   @@index([connectionId, reviewStatus])
   @@index([applicationId])
 }

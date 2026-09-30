@@ -3,12 +3,19 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
 import { getDb } from "@/server/db";
 import { outlookReview } from "@/server/outlook/review";
+import { gmailSync } from "@/server/gmail/sync";
 import { outlookSync } from "@/server/outlook/sync";
 import { publicError } from "@/server/action-error";
 import { z } from "zod";
-export async function manageOutlook(operation: unknown, input?: unknown) {
+export async function manageOutlook(
+  operation: unknown,
+  input?: unknown,
+  mailbox: unknown = "outlook",
+) {
   const user = await requireUser();
   try {
+    const provider = z.enum(["outlook", "gmail"]).parse(mailbox);
+    const label = provider === "gmail" ? "Gmail" : "Outlook";
     const op = z
       .enum(["accept", "dismiss", "disconnect", "sync"])
       .parse(operation);
@@ -22,24 +29,31 @@ export async function manageOutlook(operation: unknown, input?: unknown) {
         : "Application updated.";
     } else if (op === "dismiss") await service.dismiss(user.id, input);
     else if (op === "disconnect") {
-      await service.disconnect(user.id);
+      await service.disconnect(user.id, provider);
       message = "Disconnected. Imported applications are preserved.";
     } else {
-      const connection = await db.outlookConnection.findUnique({
-        where: { userId: user.id },
-        select: { id: true },
-      });
-      if (!connection) return { ok: false, error: "Connect Outlook first." };
-      const result = await outlookSync(db)(user.id, connection.id);
+      const connection = await (provider === "gmail"
+        ? db.gmailConnection.findUnique({
+            where: { userId: user.id },
+            select: { id: true },
+          })
+        : db.outlookConnection.findUnique({
+            where: { userId: user.id },
+            select: { id: true },
+          }));
+      if (!connection) return { ok: false, error: `Connect ${label} first.` };
+      const result = await (
+        provider === "gmail" ? gmailSync(db) : outlookSync(db)
+      )(user.id, connection.id);
       message =
         result.status === "synced"
-          ? `${result.count} new suggestions. ${result.more ? "More mail remains; sync again or let background sync continue." : "Inbox is up to date."}`
+          ? `${result.count} new suggestions. ${result.more ? "More mail remains; sync again or let background sync continue." : "Mailbox is up to date."}`
           : result.status === "REAUTH_REQUIRED"
-            ? "Reconnect Outlook to continue."
+            ? `Reconnect ${label} to continue.`
             : result.status === "THROTTLED"
-              ? "Microsoft asked us to wait. Background sync will retry later."
+              ? "The provider asked us to wait. Background sync will retry later."
               : result.status === "CURSOR_EXPIRED"
-                ? "Microsoft's cursor expired. The next sync rebuilds it without duplicating suggestions."
+                ? "The provider's cursor expired. The next sync rebuilds it without duplicating suggestions."
                 : "Sync is busy or unavailable. Try again later; check connection status below.";
     }
     for (const path of [

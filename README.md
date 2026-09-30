@@ -2,7 +2,7 @@
 
 A personal job-search workspace built with Next.js App Router, React Server Components, TypeScript, Tailwind CSS, shadcn-style Radix primitives, Lucide, Recharts, PostgreSQL, Prisma, and Better Auth.
 
-**Status: Weeks 1–2 and the Week 3 Outlook slice implemented.** Sign-in, persistent tracking, Kanban, cohort analytics, and hourly mock discovery work locally. A read-only synthetic demo is available without an account. Outlook import awaits Microsoft app registration and live consent validation; networking and production hosting remain planned. This is not yet a production release.
+**Status: Weeks 1–2 and the Week 3 mailbox review slice implemented.** Sign-in, persistent tracking, Kanban, cohort analytics, and hourly mock discovery work locally. A read-only synthetic demo is available without an account. Gmail import awaits Google OAuth setup and live consent validation; networking and production hosting remain planned. This is not yet a production release.
 
 ## What works
 
@@ -77,8 +77,14 @@ Integration tests refuse databases whose name does not end in `_test`. HTTP smok
 
 ## Release boundaries
 
-Email verification, password recovery, production hosting, browser interaction/accessibility QA, managed backups, and account export/deletion are not implemented yet. Registration should be disabled after provisioning a private account. A public demo must contain only synthetic data. No LinkedIn scraping is implemented. Outlook synchronization only starts after explicit account connection; no personal mailbox has been accessed during development.
+Email verification, password recovery, production hosting, browser interaction/accessibility QA, managed backups, and account export/deletion are not implemented yet. Registration should be disabled after provisioning a private account. A public demo must contain only synthetic data. No LinkedIn scraping is implemented. Mailbox synchronization only starts after explicit account connection. Automated tests use synthetic messages.
 
 ## Week 3 — Outlook review
 
-Outlook OAuth, encrypted token storage, Inbox delta sync, and reviewed application imports are implemented. Configure your Microsoft app registration using [OUTLOOK_SETUP.md](docs/OUTLOOK_SETUP.md), then open Email review. No mailbox is accessed until you connect; live Microsoft consent and browser validation remain outstanding.
+Outlook OAuth, encrypted token storage, Inbox delta sync, and reviewed application imports are implemented. Configure your Microsoft app registration using [OUTLOOK_SETUP.md](docs/OUTLOOK_SETUP.md), then open Email review. Microsoft Graph reads the Microsoft mailbox, even when the Microsoft sign-in address ends in @gmail.com. Successful empty-mailbox access has been checked locally; populated mailbox, renewal, and browser interaction acceptance remain outstanding.
+
+## Gmail import
+
+Gmail has its own OAuth connection, encrypted credentials and resumable background sync. It reads the last 30 days of received mail (including archived mail), then incremental changes. Both providers share a review queue; ambiguous application updates require an explicit stage choice. No tracker changes happen without approval.
+
+Follow [GMAIL_SETUP.md](docs/GMAIL_SETUP.md) to enable the Gmail API, configure a Google OAuth test user/client, and connect your mailbox. Connecting a Gmail plugin in Codex does not configure this app. Live Gmail consent and the requested source email are not yet verified.
