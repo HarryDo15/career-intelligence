@@ -21,21 +21,24 @@ const timestamp = (value: string) =>
   `${new Date(value).toLocaleString("en-GB", { timeZone: "UTC" })} UTC`;
 const stages = ["APPLIED", "SCREENING", "TECHNICAL", "OFFER", "REJECTED"];
 export function EmailReview({
-  configured,
-  connection,
+  mailboxes,
   rows,
   total,
   page,
   applications,
   notice,
 }: {
-  configured: boolean;
-  connection: {
-    lastSyncedAt: string | null;
-    reauthRequired: boolean;
-    lastErrorCode: string | null;
-    nextSyncAt: string | null;
-  } | null;
+  mailboxes: {
+    provider: "outlook" | "gmail";
+    configured: boolean;
+    connection: {
+      emailAddress?: string;
+      lastSyncedAt: string | null;
+      reauthRequired: boolean;
+      lastErrorCode: string | null;
+      nextSyncAt: string | null;
+    } | null;
+  }[];
   rows: Row[];
   total: number;
   page: number;
@@ -45,9 +48,13 @@ export function EmailReview({
   const [pending, start] = useTransition(),
     [message, setMessage] = useState(notice ?? "");
   const router = useRouter();
-  function act(op: string, input?: unknown) {
+  function act(
+    op: string,
+    input?: unknown,
+    provider: "outlook" | "gmail" = "outlook",
+  ) {
     start(async () => {
-      const result = await manageOutlook(op, input);
+      const result = await manageOutlook(op, input, provider);
       setMessage(
         result.ok
           ? (result.message ?? "Saved.")
@@ -73,84 +80,99 @@ export function EmailReview({
           {total} awaiting review
         </span>
       </div>
-      <section className="panel mb-6 p-6">
-        <div className="flex flex-wrap items-start justify-between gap-5">
-          <div className="max-w-2xl">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Mail size={19} className="text-primary" />
-              Outlook{" "}
-              {connection
-                ? connection.reauthRequired
-                  ? "· Reconnect required"
-                  : "· Connected"
-                : "· Not connected"}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Connect to review the last 30 days of your Inbox, then new mail as
-              it arrives. We read message previews, never send email, and ask
-              you to approve every tracker change.
-            </p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {connection?.lastSyncedAt
-                ? `Last completed sync: ${timestamp(connection.lastSyncedAt)}`
-                : "No completed sync yet."}
-              {connection?.lastErrorCode
-                ? ` Last sync status: ${connection.lastErrorCode}.`
-                : ""}
-              {connection?.nextSyncAt
-                ? ` Eligible to retry after ${timestamp(connection.nextSyncAt)}.`
-                : ""}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {configured && (!connection || connection.reauthRequired) && (
-              <form action="/api/integrations/outlook/connect" method="post">
-                <Button type="submit">
-                  {connection ? "Reconnect Outlook" : "Connect Outlook"}
-                </Button>
-              </form>
+      {mailboxes.map(({ provider, configured, connection }) => {
+        const label = provider === "gmail" ? "Gmail" : "Outlook";
+        return (
+          <section key={provider} className="panel mb-6 p-6">
+            <div className="flex flex-wrap items-start justify-between gap-5">
+              <div className="max-w-2xl">
+                <h2 className="flex items-center gap-2 font-semibold">
+                  <Mail size={19} className="text-primary" />
+                  {label}{" "}
+                  {connection
+                    ? connection.reauthRequired
+                      ? "· Reconnect required"
+                      : "· Connected"
+                    : "· Not connected"}
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {provider === "gmail"
+                    ? "Review the last 30 days of received Gmail mail, including archived messages."
+                    : "Review the last 30 days of your Microsoft Inbox. A Gmail address used to sign into Microsoft does not grant access to Gmail."}{" "}
+                  We read message previews and ask you to approve every tracker
+                  change.
+                </p>
+                <p className="mt-2 text-sm font-medium">
+                  {connection?.emailAddress
+                    ? `Connected mailbox: ${connection.emailAddress}`
+                    : ""}
+                </p>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {connection?.lastSyncedAt
+                    ? `Last completed sync: ${timestamp(connection.lastSyncedAt)}`
+                    : "No completed sync yet."}
+                  {connection?.lastErrorCode
+                    ? ` Last sync status: ${connection.lastErrorCode}.`
+                    : ""}
+                  {connection?.nextSyncAt
+                    ? ` Eligible to retry after ${timestamp(connection.nextSyncAt)}.`
+                    : ""}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {configured && (!connection || connection.reauthRequired) && (
+                  <form
+                    action={`/api/integrations/${provider}/connect`}
+                    method="post"
+                  >
+                    <Button type="submit">
+                      {connection ? `Reconnect ${label}` : `Connect ${label}`}
+                    </Button>
+                  </form>
+                )}
+                {connection && (
+                  <>
+                    <Button
+                      disabled={pending || connection.reauthRequired}
+                      onClick={() => act("sync", undefined, provider)}
+                    >
+                      <RefreshCw size={15} />
+                      Sync mail
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Disconnect ${label} and delete its email excerpts, suggestions, and tokens? Your imported applications and stage history remain.`,
+                          )
+                        )
+                          act("disconnect", undefined, provider);
+                      }}
+                    >
+                      <Unplug size={15} />
+                      Disconnect
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+            {!configured && (
+              <p className="mt-4 rounded-lg bg-secondary p-3 text-sm">
+                {label} setup is required. Follow the {label} setup guide to
+                configure OAuth credentials and the encryption key before
+                connecting.
+              </p>
             )}
-            {connection && (
-              <>
-                <Button
-                  disabled={pending || connection.reauthRequired}
-                  onClick={() => act("sync")}
-                >
-                  <RefreshCw size={15} />
-                  Sync Inbox
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Disconnect Outlook and delete its email excerpts, suggestions, and tokens? Your imported applications and stage history remain.",
-                      )
-                    )
-                      act("disconnect");
-                  }}
-                >
-                  <Unplug size={15} />
-                  Disconnect
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
-        {!configured && (
-          <p className="mt-4 rounded-lg bg-secondary p-3 text-sm">
-            Microsoft connection setup is required. Configure the app
-            registration and encryption key using the Outlook setup guide before
-            connecting.
-          </p>
-        )}
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <ShieldCheck size={14} />
-          Read-only mailbox access · Encrypted excerpts · No automatic tracker
-          changes
-        </p>
-      </section>
+            <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck size={14} />
+              Read-only mailbox access · Encrypted excerpts · No automatic
+              tracker changes
+            </p>
+          </section>
+        );
+      })}
       <p role="status" aria-live="polite" className="mb-4 text-sm text-primary">
         {pending ? "Working…" : message}
       </p>
@@ -158,14 +180,14 @@ export function EmailReview({
         <section className="panel p-12 text-center">
           <Mail className="mx-auto mb-4 text-primary" size={30} />
           <h2 className="font-semibold">
-            {connection
+            {mailboxes.some((m) => m.connection)
               ? "Your review queue is clear"
               : "Bring your application history into view"}
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
-            {connection
-              ? "Sync your Inbox to look for new application updates."
-              : "Connect Outlook to find application confirmations, interviews, rejections, and offers."}
+            {mailboxes.some((m) => m.connection)
+              ? "Sync your connected mailbox to look for new application updates."
+              : "Connect Gmail or Outlook to find application confirmations, interviews, rejections, and offers."}
           </p>
         </section>
       ) : (
@@ -222,7 +244,10 @@ function ReviewCard({
       <div className="border-b border-border p-5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <span className="rounded bg-secondary px-2 py-1 text-[11px] font-semibold text-primary">
-            {row.stage?.replaceAll("_", " ")} · Suggested
+            {row.provider} ·{" "}
+            {row.stage
+              ? `${row.stage.replaceAll("_", " ")} · Suggested`
+              : "Stage needs review"}
           </span>
           <time
             className="text-xs text-muted-foreground"
@@ -282,8 +307,12 @@ function ReviewCard({
             <select
               name="stage"
               className={field}
-              defaultValue={row.stage ?? "APPLIED"}
+              required
+              defaultValue={row.stage ?? ""}
             >
+              <option value="" disabled>
+                Choose the stage after reviewing this email
+              </option>
               {stages.map((s) => (
                 <option key={s}>{s}</option>
               ))}

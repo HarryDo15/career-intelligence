@@ -21,7 +21,7 @@ export function outlookReview(db: PrismaClient) {
     async list(userId: string, page = 1) {
       page = z.number().int().min(1).max(10000).parse(page);
       const where = {
-        connection: { userId },
+        OR: [{ connection: { userId } }, { gmailConnection: { userId } }],
         reviewStatus: "PENDING" as const,
       };
       const [rows, total] = await db.$transaction([
@@ -37,6 +37,7 @@ export function outlookReview(db: PrismaClient) {
         total,
         rows: rows.map((s) => ({
           id: s.id,
+          provider: s.gmailConnectionId ? "Gmail" : "Outlook",
           receivedAt: s.receivedAt.toISOString(),
           stage: s.proposedStage,
           reason: s.reasonCode,
@@ -45,7 +46,7 @@ export function outlookReview(db: PrismaClient) {
                 JSON.parse(
                   unseal(
                     s.encryptedPayload,
-                    `signal:${s.connectionId}:${s.messageId}`,
+                    `signal:${s.connectionId ?? s.gmailConnectionId}:${s.messageId}`,
                   ),
                 ),
               )
@@ -64,7 +65,7 @@ export function outlookReview(db: PrismaClient) {
       const changed = await db.emailSignal.updateMany({
         where: {
           id: signalId,
-          connection: { userId },
+          OR: [{ connection: { userId } }, { gmailConnection: { userId } }],
           reviewStatus: "PENDING",
         },
         data: { reviewStatus: "DISMISSED", reviewedAt: new Date() },
@@ -77,7 +78,10 @@ export function outlookReview(db: PrismaClient) {
         // Shared user lock also serializes new-record reviews and disconnect.
         await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
         const signal = await tx.emailSignal.findFirst({
-          where: { id: value.id, connection: { userId } },
+          where: {
+            id: value.id,
+            OR: [{ connection: { userId } }, { gmailConnection: { userId } }],
+          },
         });
         if (!signal) throw notFound();
         if (signal.reviewStatus === "ACCEPTED")
@@ -194,7 +198,9 @@ export function outlookReview(db: PrismaClient) {
         await tx.auditLog.create({
           data: {
             userId,
-            action: "outlook.review-accepted",
+            action: signal.gmailConnectionId
+              ? "gmail.review-accepted"
+              : "outlook.review-accepted",
             entityType: "Application",
             entityId: saved.id,
             metadata: { historical },
@@ -203,21 +209,26 @@ export function outlookReview(db: PrismaClient) {
         return { id: saved.id, historical };
       });
     },
-    async disconnect(userId: string) {
+    async disconnect(
+      userId: string,
+      provider: "outlook" | "gmail" = "outlook",
+    ) {
       await db.$transaction(async (tx) => {
         await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
         await tx.verification.deleteMany({
           where: {
             identifier: {
-              in: [`outlook:${userId}`, `outlook-completing:${userId}`],
+              in: [`${provider}:${userId}`, `${provider}-completing:${userId}`],
             },
           },
         });
-        await tx.outlookConnection.deleteMany({ where: { userId } });
+        if (provider === "gmail")
+          await tx.gmailConnection.deleteMany({ where: { userId } });
+        else await tx.outlookConnection.deleteMany({ where: { userId } });
         await tx.auditLog.create({
           data: {
             userId,
-            action: "outlook.disconnected",
+            action: `${provider}.disconnected`,
             entityType: "User",
             entityId: userId,
           },

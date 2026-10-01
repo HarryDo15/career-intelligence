@@ -1,3 +1,4 @@
+import { gmailSync } from "../src/server/gmail/sync";
 import "dotenv/config";
 import assert from "node:assert/strict";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -234,40 +235,43 @@ try {
     ).stage,
     "WISHLIST",
   );
-  const outlookConnect = origin + "/api/integrations/outlook/connect";
-  assert.equal(
-    (
-      await fetch(outlookConnect, {
-        method: "POST",
-        headers: { Origin: origin },
-        redirect: "manual",
-      })
-    ).status,
-    401,
-  );
-  assert.equal(
-    (
-      await fetch(outlookConnect, {
-        method: "POST",
-        headers: { Cookie: one.cookie, Origin: "https://evil.example" },
-        redirect: "manual",
-      })
-    ).status,
-    403,
-  );
-  const callback = await fetch(
-    origin +
-      "/api/integrations/outlook/callback?state=invalid&code=synthetic-invalid",
-    { headers: { Cookie: one.cookie }, redirect: "manual" },
-  );
-  assert.equal(callback.status, 303);
-  assert.ok(
-    callback.headers
-      .get("location")
-      ?.endsWith("/email-review?connection=failed"),
-  );
+  for (const provider of ["outlook", "gmail"]) {
+    const connect = `${origin}/api/integrations/${provider}/connect`;
+    assert.equal(
+      (
+        await fetch(connect, {
+          method: "POST",
+          headers: { Origin: origin },
+          redirect: "manual",
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await fetch(connect, {
+          method: "POST",
+          headers: { Cookie: one.cookie, Origin: "https://evil.example" },
+          redirect: "manual",
+        })
+      ).status,
+      403,
+    );
+    const callback = await fetch(
+      `${origin}/api/integrations/${provider}/callback?state=invalid&code=synthetic-invalid`,
+      { headers: { Cookie: one.cookie }, redirect: "manual" },
+    );
+    assert.equal(callback.status, 303);
+    const location = new URL(callback.headers.get("location")!);
+    assert.equal(location.pathname, "/email-review");
+    assert.equal(location.searchParams.get("connection"), "failed");
+  }
   assert.equal(
     await db.outlookConnection.count({ where: { userId: { in: createdIds } } }),
+    0,
+  );
+  assert.equal(
+    await db.gmailConnection.count({ where: { userId: { in: createdIds } } }),
     0,
   );
   const mailbox = await db.outlookConnection.create({
@@ -318,6 +322,46 @@ try {
     await fetch(origin + "/dashboard", { headers: { Cookie: one.cookie } })
   ).text();
   assert.ok(afterImport.includes("HTTP Mail Fixture"));
+  const gmail = await db.gmailConnection.create({
+    data: {
+      userId: createdIds[0],
+      googleAccountId: `fixture-${run}`,
+      emailAddress: "http-fixture@gmail.com",
+      encryptedTokens: seal("synthetic-cache", `gmail-tokens:${createdIds[0]}`),
+      scopes: [],
+      importSince: new Date(Date.now() - 30 * 86400_000),
+    },
+  });
+  await gmailSync(db, {
+    refresh: async () => ({ token: "synthetic", cache: "synthetic-cache" }),
+    page: async () => ({
+      messages: [
+        {
+          id: run,
+          receivedDateTime: received,
+          subject: "HTTP Gmail Application Update",
+          bodyPreview: "Check your application status.",
+        },
+      ],
+      cursor: { phase: "history", historyId: "1" },
+      more: false,
+    }),
+  })(createdIds[0], gmail.id);
+  const gmailHtml = await (
+    await fetch(origin + "/email-review", { headers: { Cookie: one.cookie } })
+  ).text();
+  assert.ok(gmailHtml.includes("http-fixture@gmail.com"));
+  assert.ok(gmailHtml.includes("HTTP Gmail Application Update"));
+  assert.ok(gmailHtml.includes("Stage needs review"));
+  assert.match(
+    gmailHtml,
+    /<option[^>]*value=""[^>]*selected=""[^>]*>Choose the stage/,
+  );
+  const privateHtml = await (
+    await fetch(origin + "/email-review", { headers: { Cookie: two.cookie } })
+  ).text();
+  assert.ok(!privateHtml.includes("HTTP Gmail Application Update"));
+  assert.ok(!privateHtml.includes("http-fixture@gmail.com"));
   const signout = await fetch(origin + "/api/auth/sign-out", {
     method: "POST",
     headers: { ...headers, Cookie: one.cookie },
@@ -339,7 +383,7 @@ try {
   });
   assert.equal(signin.status, 200, await signin.clone().text());
   console.log(
-    "HTTP smoke passed: pages, sign-up/sign-in/sign-out, session revocation, private CRUD, ownership, CSRF, stale edits, archive/restore, persisted dashboard, Kanban moves, discovery profiles/runs, idempotent save, Outlook page, connection CSRF and invalid callback rejection, encrypted source rendering, and reviewed import reflected in the dashboard.",
+    "HTTP smoke passed: pages, sign-up/sign-in/sign-out, session revocation, private CRUD, ownership, CSRF, stale edits, archive/restore, persisted dashboard, Kanban moves, discovery profiles/runs, idempotent save, Gmail and Outlook pages, mailbox identity and required stage review, connection CSRF and invalid callback rejection, encrypted source rendering, and reviewed import reflected in the dashboard.",
   );
 } finally {
   await db.user.deleteMany({ where: { id: { in: createdIds } } });

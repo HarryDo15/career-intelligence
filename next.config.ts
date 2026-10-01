@@ -2,7 +2,9 @@ import type { NextConfig } from "next";
 const config: NextConfig = {
   poweredByHeader: false,
   logging: {
-    incomingRequests: { ignore: [/\/api\/integrations\/outlook\/callback/] },
+    incomingRequests: {
+      ignore: [/\/api\/integrations\/(outlook|gmail)\/callback/],
+    },
   },
   serverExternalPackages: ["pg"],
   async headers() {

@@ -57,21 +57,26 @@ export function classify(message: MailMessage) {
             : applied
               ? "APPLIED"
               : null;
-  if (!stage) return null;
+  const ambiguous = /\bapplication\s+(?:update|status)\b/i.test(
+    message.subject,
+  );
+  if (!stage && !ambiguous) return null;
   // Suggestions only: no invented employer from email domains or recruiter names.
   const match = text.match(
     /(?:application for|applying for|position of|role of)\s+(?:the\s+)?(.{2,160}?)\s+at\s+([^\n.!?]{2,120})/i,
   );
   return {
     stage,
-    confidence: match ? 0.8 : 0.55,
-    reasonCode: rejection
-      ? "REJECTION_LANGUAGE"
-      : offer
-        ? "OFFER_LANGUAGE"
-        : applied
-          ? "CONFIRMATION_LANGUAGE"
-          : "INTERVIEW_LANGUAGE",
+    confidence: !stage ? 0.25 : match ? 0.8 : 0.55,
+    reasonCode: !stage
+      ? "APPLICATION_UPDATE_REVIEW"
+      : rejection
+        ? "REJECTION_LANGUAGE"
+        : offer
+          ? "OFFER_LANGUAGE"
+          : applied
+            ? "CONFIRMATION_LANGUAGE"
+            : "INTERVIEW_LANGUAGE",
     payload: {
       subject: message.subject.slice(0, 300),
       sender: message.from?.emailAddress.address ?? "Unknown sender",
